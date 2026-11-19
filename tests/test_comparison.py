@@ -10,11 +10,11 @@ class Tests(unittest.TestCase):
         m=[Product('4006381333931','Crema marca','Marca','75 ml',14500,25,14)]
         b=[Product('4006381333931','Crema marca','Marca','75 ml',15900,30,sku='SKU1')]
         got=audit(m,b)
-        self.assertEqual({g.field for g in got},{'PRECIO_COP','DESCUENTO_PCT'})
+        self.assertEqual({g.field for g in got if g.status=='DIFERENCIA'},{'PRECIO_COP','DESCUENTO_PCT'})
     def test_missing(self):
         m=[Product('4006381333931','Producto',price=100)]
         got=audit(m,[])
-        self.assertEqual(got[0].status,'NO_EN_BASE')
+        self.assertTrue(any(g.status=='NO_EN_BASE' for g in got))
     def test_not_silently_match_names(self):
         m=[Product('4006381333931','X')]
         b=[Product('5901234123457','X')]

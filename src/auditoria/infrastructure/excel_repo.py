@@ -1,6 +1,7 @@
 """Capa de infraestructura: lectores XLSX/ODS, separada de negocio."""
 from pathlib import Path
 from io import BytesIO
+from datetime import date, datetime
 from python_calamine import CalamineWorkbook
 from ..domain.models import Product
 from ..domain.compare import normalize_code
@@ -41,6 +42,14 @@ def _number(v):
         return None
 
 
+def _date_text(value):
+    if isinstance(value, datetime):
+        return value.date().isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    return str(value).strip() if value is not None else ''
+
+
 def load_products(file_bytes: bytes, filename: str, sheet_name: str, mode: str) -> list[Product]:
     rows = _load_sheet(file_bytes, filename, sheet_name)
     if not rows or len(rows) < 2:
@@ -57,6 +66,11 @@ def load_products(file_bytes: bytes, filename: str, sheet_name: str, mode: str) 
         page = _pick(row, columns, 'PAGINA_PDF', 'PAGINA')
         try: page = int(page) if page is not None else None
         except (ValueError, TypeError): page = None
+        notes = str(_pick(row, columns, 'OBSERVACIONES') or '')
+        validity_text = str(_pick(row, columns, 'VIGENCIA', 'VIGENCIA_TEXTO') or '')
+        # Compatibilidad con las vigencias explícitas de la transcripción incluida.
+        if not validity_text and notes.strip().lower().startswith('vigencia '):
+            validity_text = notes.strip()
         out.append(Product(
             ean=normalize_code(ean), name=str(name or ''),
             brand=str(_pick(row, columns, 'MARCA') or ''),
@@ -65,7 +79,10 @@ def load_products(file_bytes: bytes, filename: str, sheet_name: str, mode: str) 
             discount=_number(_pick(row, columns, 'DESCUENTO_PCT', 'DESCUENTO_BASE_PCT', 'DESCUENTO')),
             page=page, source=f'{filename}/{sheet_name}',
             confidence=str(_pick(row, columns, 'CONFIANZA') or 'CATALOGO'),
-            notes=str(_pick(row, columns, 'OBSERVACIONES') or ''),
-            sku=str(_pick(row, columns, 'SKU') or '')
+            notes=notes,
+            sku=str(_pick(row, columns, 'SKU') or ''),
+            validity_text=validity_text,
+            valid_from=_date_text(_pick(row, columns, 'VIGENCIA_INICIO', 'FECHA_INICIO')),
+            valid_until=_date_text(_pick(row, columns, 'VIGENCIA_FIN', 'FECHA_FIN'))
         ))
     return out

@@ -59,3 +59,31 @@ Importante: cuando se importe un archivo externo que no incluya `REVISTA_EXTRAID
 3. Generación de un reporte clasificado `confirmado / revisión / no localizado` con trazabilidad y validación humana.
 4. Sustituir el lector Excel por conexión de **solo lectura** a SQL; nunca corregir la BD automáticamente.
 5. Métricas de extracción y falsos positivos con un dataset etiquetado y pruebas de regresión.
+
+## Vigencia promocional
+
+La auditoría evalúa si el descuento **no ha vencido** usando la fecha actual de
+Colombia. Devuelve `true` hasta el último día inclusive y `false` desde el día
+siguiente. Las promociones futuras tienen booleano `true` y estado `FUTURA`.
+Sin fechas fiables, el resultado queda vacío (`null`) con estado `REVISAR`.
+
+En la tabla de revisión, complete `Vigencia texto` (ejemplo: `del 10 al 30 de
+noviembre de 2026`) o ambas columnas `Vigencia inicio` y `Vigencia fin`, en formato
+`AAAA-MM-DD` o `DD/MM/AAAA`. Las fechas completas prevalecen sobre el texto.
+Si el texto no indica año, informe el **año de inicio de la edición** en la barra
+lateral. No se presupone el año actual. Puede escribir una vigencia general
+confirmada para las filas sin vigencia propia.
+
+Excel admite las columnas opcionales `VIGENCIA`/`VIGENCIA_TEXTO`,
+`VIGENCIA_INICIO`/`FECHA_INICIO` y `VIGENCIA_FIN`/`FECHA_FIN`.
+El OCR todavía requiere transcribir/revisar la vigencia impresa. La demostración
+incluida no contiene estas columnas; se recuperan cinco rangos de las observaciones
+que empiezan por `Vigencia `, para los que debe confirmar el año de la edición.
+Los demás registros quedan pendientes de revisión. El catálogo original no se modifica.
+
+El informe exporta `VIGENCIA_NO_VENCIDA` como booleano Excel, además de estado,
+fechas y fecha de evaluación. Es una instantánea: vuelva a comparar para actualizarla.
+Las fechas de revista y base también se comparan cuando ambas están disponibles.
+
+Consulte [el análisis del repositorio y la propuesta de extracción](docs/ANALISIS_Y_PROPUESTA.md)
+para los hallazgos, la comparación entre LLM, parametrización y RAG, y el plan de evaluación.

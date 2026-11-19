@@ -15,6 +15,9 @@ class Product:
     confidence: str = ""
     notes: str = ""
     sku: str = ""
+    validity_text: str = ""
+    valid_from: str = ""
+    valid_until: str = ""
 
     def as_dict(self):
         return asdict(self)

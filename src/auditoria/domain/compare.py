@@ -4,6 +4,7 @@ import unicodedata
 from collections import defaultdict
 from difflib import SequenceMatcher
 from .models import Difference, Product
+from .validity import evaluate_validity, today_bogota
 
 
 def normalize_code(value):
@@ -28,13 +29,14 @@ def valid_gtin(value):
 
 
 def audit(magazine: list[Product], database: list[Product], price_tolerance: int = 0,
-          name_min_similarity: float = 0.82) -> list[Difference]:
+          name_min_similarity: float = 0.82, as_of=None, edition_year=None) -> list[Difference]:
     """Devuelve diferencias auditables; empareja SOLO por EAN exacto no vacío.
 
     No relaciona por semejanza automáticamente para evitar errores de producto.
     Los registros sin código o con duplicados se envían a revisión.
     """
     output = []
+    as_of = as_of if as_of is not None else today_bogota()
     lookup = defaultdict(list)
     for product in database:
         code = normalize_code(product.ean)
@@ -47,6 +49,12 @@ def audit(magazine: list[Product], database: list[Product], price_tolerance: int
         def add(status, field, pm='', db='', severity='MEDIA'):
             output.append(Difference(status, code, '', field, str(pm), str(db), product.page,
                                      product.name, ev, severity))
+        validity = evaluate_validity(product, as_of, edition_year)
+        if validity.not_expired is None:
+            add('REVISAR_VIGENCIA', 'VIGENCIA', product.validity_text, validity.detail)
+        elif not validity.not_expired:
+            add('VIGENCIA_VENCIDA', 'VIGENCIA', validity.end.isoformat(),
+                f'Fecha de evaluación: {as_of.isoformat()}', 'ALTA')
         if not code or not code.isdigit() or len(code) not in (8, 12, 13, 14):
             add('REVISAR_IDENTIFICACION', 'EAN', code, '', 'ALTA')
             continue
@@ -64,6 +72,17 @@ def audit(magazine: list[Product], database: list[Product], price_tolerance: int
         def diff(field, a, b, severity='MEDIA'):
             output.append(Difference('DIFERENCIA', code, dbp.sku, field, str(a), str(b),
                                      product.page, product.name, ev, severity))
+        base_validity = evaluate_validity(dbp, as_of, edition_year)
+        if validity.not_expired is not None and base_validity.not_expired is not None:
+            for field, a, b in [('VIGENCIA_INICIO', validity.start, base_validity.start),
+                                ('VIGENCIA_FIN', validity.end, base_validity.end)]:
+                if a != b:
+                    diff(field, a, b)
+        elif dbp.validity_text or dbp.valid_from or dbp.valid_until:
+            if base_validity.not_expired is None:
+                add('REVISAR_VIGENCIA_BASE', 'VIGENCIA', '', base_validity.detail)
+        if normalize_text(product.brand) != normalize_text(dbp.brand):
+            diff('MARCA', product.brand, dbp.brand)
         if product.price is not None and dbp.price is not None:
             if abs(int(product.price) - int(dbp.price)) > price_tolerance:
                 diff('PRECIO_COP', product.price, dbp.price, 'ALTA')

@@ -1,5 +1,17 @@
 # Evaluación del proyecto de auditoría de revistas
 
+> Actualización: ya se implementaron reglas configurables, validación de vacíos,
+> descuentos decimales, equivalencias simples de unidades y un índice de consulta
+> exacta por EAN. Consulte el README para la configuración y pruebas manuales.
+> Los hallazgos siguientes describen el diagnóstico inicial; los puntos sobre
+> truncamiento de descuentos y omisión de campos vacíos quedaron corregidos.
+> Por defecto, ahora un dígito verificador inválido bloquea la comparación de campos;
+> se puede permitir expresamente la comparación manteniendo su alerta.
+> La interfaz DEMO también fue adaptada a fichas de producto y tablas HTML para
+> no cargar las DLL de pandas/Arrow bloqueadas por Windows. El flujo de interfaz
+> ya pasó las pruebas automatizadas; el bloqueo de la interfaz descrito más abajo
+> corresponde al estado anterior a esta corrección. Suite actual: 46 pruebas.
+
 ## Alcance revisado
 
 Revisión del código fuente completo, pruebas, README, configuración de empaquetado,

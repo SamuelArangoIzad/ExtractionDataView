@@ -5,6 +5,7 @@ from datetime import date, datetime
 from python_calamine import CalamineWorkbook
 from ..domain.models import Product
 from ..domain.compare import normalize_code
+from ..domain.numbers import parse_number
 
 
 def get_sheets(file_bytes: bytes, filename: str):
@@ -29,17 +30,12 @@ def _pick(row, columns, *aliases):
     return None
 
 
-def _number(v):
-    if v is None or v == '':
-        return None
-    if isinstance(v, (int, float)):
-        return int(v)
-    s = str(v).replace('$', '').replace('COP', '').strip().replace(' ', '')
-    s = s.replace('.', '').replace(',', '') if s.count('.') + s.count(',') == 1 and len(s.rsplit('.', 1)[-1]) == 3 else s.replace(',', '')
+def _number(v, *, money=False):
     try:
-        return int(float(s))
+        return parse_number(v, money=money)
     except ValueError:
-        return None
+        # Conservar el dato inválido para que la auditoría lo señale, no ocultarlo como vacío.
+        return str(v)
 
 
 def _date_text(value):
@@ -75,7 +71,7 @@ def load_products(file_bytes: bytes, filename: str, sheet_name: str, mode: str) 
             ean=normalize_code(ean), name=str(name or ''),
             brand=str(_pick(row, columns, 'MARCA') or ''),
             presentation=str(_pick(row, columns, 'PRESENTACION', 'PRESENTACIÓN') or ''),
-            price=_number(_pick(row, columns, 'PRECIO_REVISTA_COP', 'PRECIO_BASE_COP', 'PRECIO_COP', 'PRECIO')),
+            price=_number(_pick(row, columns, 'PRECIO_REVISTA_COP', 'PRECIO_BASE_COP', 'PRECIO_COP', 'PRECIO'), money=True),
             discount=_number(_pick(row, columns, 'DESCUENTO_PCT', 'DESCUENTO_BASE_PCT', 'DESCUENTO')),
             page=page, source=f'{filename}/{sheet_name}',
             confidence=str(_pick(row, columns, 'CONFIANZA') or 'CATALOGO'),

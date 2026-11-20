@@ -72,7 +72,7 @@ class ValidityTests(unittest.TestCase):
     def test_compare_dates_and_brand(self):
         p=Product(ean='4006381333931',brand='A',valid_from='2026-11-10',valid_until='2026-11-30')
         b=Product(ean=p.ean,brand='B',valid_from='2026-11-11',valid_until='2026-11-29')
-        fields={d.field for d in audit([p],[b],as_of=date(2026,11,19))}
+        fields={d.field for d in audit([p],[b],as_of=date(2026,11,19)) if d.status=='DIFERENCIA'}
         self.assertEqual(fields,{'MARCA','VIGENCIA_INICIO','VIGENCIA_FIN'})
 
     def test_excel_aliases_and_native_dates(self):

@@ -8,8 +8,8 @@ class Product:
     name: str = ""
     brand: str = ""
     presentation: str = ""
-    price: Optional[int] = None
-    discount: Optional[float] = None
+    price: float | str | None = None
+    discount: float | str | None = None
     page: Optional[int] = None
     source: str = ""
     confidence: str = ""

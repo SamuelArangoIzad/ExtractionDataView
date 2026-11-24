@@ -186,7 +186,7 @@ vacíos, equivalencias, EAN distinto con el mismo nombre, ceros iniciales,
 duplicados, dígito verificador, fechas y recorrido Excel → servicio → reporte.
 La prueba de integración verifica que el archivo de entrada permanece intacto.
 
-Verificación actual: 46 pruebas automatizadas aprobadas, incluidas pruebas de
+Verificación actual: 54 pruebas automatizadas aprobadas, incluidas pruebas de
 interfaz Streamlit para cargar DEMO, editar, navegar, añadir/quitar productos,
 comparar y generar el botón de descarga con el reporte. Estas pruebas impiden
 importar pandas/pyarrow para comprobar que el flujo DEMO es independiente de ellos.
@@ -229,3 +229,137 @@ Para usar la corrección:
 
 Esta corrección cubre la edición, comparación y reporte del modo DEMO. El modo OCR
 conserva sus dependencias propias y requiere Tesseract; no fue validado en estas pruebas.
+
+## Tarjetas y promociones: detección guiada por OCR local
+
+### Prueba usuario final
+
+Seleccione **PRUEBA USUARIO FINAL** en el menú. Este flujo solo muestra dos cargas
+de archivos, **Generar** y la tabla de resultados. Para la prueba actual:
+
+1. Reinicie Streamlit con `.\.venv\Scripts\python.exe -m streamlit run app.py`.
+2. Cargue `data/Base_Datos_Demo.xlsx` y `data/Revista_Essentials.pdf` en sus campos.
+3. Pulse **Generar** y espere a que termine el recorrido de todas las páginas.
+4. Revise primero **Incoherencias encontradas del consenso** y debajo **Revisiones
+   pendientes de la revista**. Ambas tablas conservan **Producto, EAN, Página,
+   Campo, Descripción de la incoherencia**. Se ocultan los productos por identificar,
+   sin nombre o con nombre vacío; sus registros se conservan internamente. Un
+   producto puede aparecer en varias filas si tiene varios campos diferentes.
+   Las filas sin diferencias no aparecen. Cambiar los archivos elimina el resultado
+   anterior; volver a generar ejecuta una lectura nueva.
+
+Internamente se orienta cada página, se obtiene una lectura de página completa,
+se detectan tarjetas con EAN/precios y se ejecuta OCR nuevamente sobre cada recorte.
+Las dos lecturas usan el mismo motor local, con contextos de imagen distintos:
+su acuerdo no equivale a dos motores independientes ni garantiza exactitud.
+Los campos solo se comparan con Excel cuando ambas lecturas coinciden y el EAN
+es exacto y válido. Excel no se utiliza para rellenar el PDF ni para decidir
+qué lectura es correcta. Se mantienen las reglas parametrizadas con sus valores
+predeterminados, sin exponer controles técnicos en esta sección.
+
+**Revisión pendiente** identifica desacuerdos, valores sin lectura única, páginas
+fallidas o productos sin EAN confirmado. Estas filas no prueban un error en Excel:
+hay que comprobar el impreso antes de corregir cualquiera de las fuentes. Los
+anuncios sin código no se asocian por parecido de nombre. Precios múltiples,
+incluidos «antes» y «ahora», se consideran ambiguos. Los descuentos «hasta» no se
+convierten en porcentajes fijos. Marca solo se extrae si aparece identificada como
+tal; la vigencia no se extrae en este flujo. Campos sin evidencia no se dan por correctos.
+
+En el libro de prueba se usa **BASE_DATOS_PRUEBA**, nunca **REVISTA_EXTRAIDA** como
+lectura del PDF. Para otros libros se requiere una única hoja de catálogo legible
+con EAN; si hay varias candidatas se pide un archivo con una sola hoja. Esta
+versión se prueba con los archivos incluidos: no descarga revistas de Internet.
+La prueba automatizada comprueba desacuerdos, múltiples diferencias por producto,
+EAN distinto/ausente, Excel ambiguo, dos llamadas OCR separadas, fallos del motor,
+interfaz mínima y regeneración/cambio de archivos.
+
+Verificación local: se ejecutó el flujo real con las 20 páginas y el Excel
+incluido. En esa corrida inicial se revisaron 52 regiones y hubo acuerdo en 88
+campos; 12 páginas no tuvieron campos confirmados. Esto es cobertura de lectura,
+no precisión certificada. Después se corrigieron avisos por prefijos de cantidad
+(`x 6 Und`) y nombres parciales, con pruebas específicas. La suite previa de
+72 pruebas pasó y las 12 pruebas finales del módulo híbrido también pasaron.
+
+En **TARJETAS: detectar y visualizar**, el modo predeterminado usa texto con
+coordenadas para orientar la página y proponer recortes alrededor de EAN y precios.
+Revisa cuatro orientaciones, después realiza pasadas de escala y contraste para
+texto claro, rojo y amarillo. Las columnas se apoyan en los EAN; los precios
+permiten recuperar tarjetas cuyo código no se leyó. El margen amplía el recorte
+para incluir precio, descuento y vigencia. No es un detector semántico entrenado.
+
+Para anuncios sin EAN se conserva la página completa. Se muestran precios,
+porcentajes y números destacados **candidatos**, junto con ampliaciones de zonas
+destacadas aunque el OCR no consiga leerlas. Estas zonas pueden contener letras
+o fotos. No se inventan dígitos, no se asigna una oferta de categoría a un producto
+y no se envían estas lecturas automáticamente a la comparación con Excel.
+Un porcentaje «hasta» se diferencia de un descuento fijo. Teléfonos, cantidades
+y fechas se conservan como contexto, fuera de la tabla comercial principal.
+
+Windows usa su motor OCR local mediante WinRT. En otros sistemas se usa Tesseract
+CLI con idiomas `spa+eng`. No requiere API, LLM, Excel, pandas ni Arrow en este
+flujo. El modo **Solo regiones visuales** continúa disponible sin motor OCR.
+El método OCR antiguo del menú conserva sus dependencias de Tesseract/pytesseract.
+
+### Cómo probarlo
+
+1. Detenga Streamlit con Ctrl+C. En la carpeta del proyecto ejecute:
+
+   ```powershell
+   .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+   .\.venv\Scripts\python.exe -m streamlit run app.py
+   ```
+
+2. Abra http://localhost:8501, elija **TARJETAS: detectar y visualizar** y mantenga
+   la revista de prueba. Para otro PDF, desactive la revista incluida y cárguelo.
+3. Deje **Detección → Guiada por texto (OCR local)**, **Corregir orientación
+   automáticamente** activado y **Tipo de página → Automático**. Pulse
+   **Detectar tarjetas de esta página** después de elegir cada página.
+4. Use las páginas **8, 11, 12 y 15 del PDF**: se verificaron respectivamente
+   **5, 6, 4 y 5** regiones de producto. No son los números impresos al pie de
+   la revista. Seleccione cada tarjeta y revise precio, descuento y EAN completos.
+   En la 15, la foto de la modelo no debe convertirse en tarjeta.
+5. Pruebe las páginas **5, 9 y 10**: se propone la página completa. En la 10 se
+   recuperó **$92.600**. En 5 y 9 los descuentos estilizados no se leen de forma
+   fiable con el motor de este equipo: abra **Zonas destacadas del anuncio para
+   revisar**. Un resultado vacío o un número parcial no confirma ausencia de oferta.
+6. Si la clasificación no corresponde, seleccione **Catálogo de varios productos**
+   o **Promoción de página completa** y detecte otra vez. Si queda girada, desactive
+   la orientación automática y ajuste los grados antihorarios manualmente.
+7. Corrija recortes con **Izquierda, Arriba, Derecha, Abajo → Guardar límites**.
+   Puede añadir regiones manuales o eliminarlas. Un anuncio mixto, como la página
+   4, puede requerir estos ajustes. Los precios «antes» y «ahora» requieren revisión.
+8. Descargue el ZIP: contiene recortes, página marcada y `regiones.json` con huella
+   del PDF, coordenadas, rotación efectiva, lecturas, fuentes de contraste y zonas
+   destacadas. Coordenadas en píxeles de la imagen mostrada, con derecha/abajo
+   exclusivos. No hay importación automática del ZIP.
+
+Cambiar de página conserva sus ajustes durante la sesión. Cambiar PDF, rotación,
+motor, tipo de página o parámetros reinicia las regiones afectadas. Detectar otra
+vez reemplaza las regiones manuales. Descargue antes de cerrar la sesión.
+
+### Pruebas y límites medidos
+
+Se verificó OCR nativo sobre las ocho páginas distintas de las capturas
+(4, 5, 8, 9, 10, 11, 12 y 15), y se inspeccionaron los recortes. Las capturas
+7–8 y 9–10 eran duplicadas. Las lecturas de esas páginas están guardadas en
+`tests/fixtures/layout_ocr.json` para pruebas deterministas sin depender del motor
+instalado. Son resultados reales con errores, no transcripciones corregidas.
+Las pruebas comprueban orientación, número de tarjetas, inclusión de EAN,
+precio de Klim, descuentos de la página 8, límites, exportación, errores de motor
+y navegación/rotación del frontend con Streamlit AppTest. No constituyen una
+medición general de precisión para revistas distintas.
+
+```powershell
+$env:PYTHONPATH='src'
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+Los números estilizados, textos inclinados y escaneos borrosos pueden fallar.
+Las pasadas pueden discrepar entre sí: se conservan lecturas contradictorias para
+revisión. La vigencia general y los descuentos compartidos todavía no se asignan
+automáticamente a tarjetas. La interfaz permite revisar el resultado antes de
+usar cualquier dato en una auditoría.
+
+Referencias: [OCR de Windows](https://learn.microsoft.com/en-us/uwp/api/windows.media.ocr.ocrengine),
+[PyWinRT](https://pywinrt.readthedocs.io/en/latest/),
+[salida TSV de Tesseract](https://tesseract-ocr.github.io/tessdoc/Command-Line-Usage).

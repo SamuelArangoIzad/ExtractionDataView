@@ -10,7 +10,10 @@
 > La interfaz DEMO también fue adaptada a fichas de producto y tablas HTML para
 > no cargar las DLL de pandas/Arrow bloqueadas por Windows. El flujo de interfaz
 > ya pasó las pruebas automatizadas; el bloqueo de la interfaz descrito más abajo
-> corresponde al estado anterior a esta corrección. Suite actual: 46 pruebas.
+> corresponde al estado anterior a esta corrección. Suite actual: 54 pruebas.
+> Ya existe una primera detección local de regiones candidatas con revisión visual,
+> ajuste manual y exportación de recortes. Aún no extrae los campos de cada tarjeta
+> ni acredita precisión semántica; consulte el README para probar este nuevo modo.
 
 ## Alcance revisado
 
@@ -177,3 +180,18 @@ La comprobación de la interfaz completa en este equipo quedó limitada por un
 No se eludió esa política. Tampoco se validó una ejecución OCR integral: el ejecutable
 Tesseract no está disponible en PATH. Los resultados anteriores corresponden al
 dominio, lector Excel y exportador, no a una certificación de la interfaz o del OCR.
+
+## Actualización: revisión guiada de tarjetas y anuncios
+
+El flujo TARJETAS ahora usa OCR local de Windows (WinRT) para orientación, anclas
+EAN/precio y lecturas comerciales candidatas. Conserva un modo solo visual y la
+corrección manual. No modifica la comparación por EAN exacto ni asigna promociones
+generales a productos. Los anuncios sin EAN conservan la página completa y muestran
+recortes contextuales de cifras destacadas, aun cuando no exista una lectura fiable.
+
+Se ejecutó el OCR nativo sobre ocho páginas del PDF incluido. Se verificaron 5, 6,
+4 y 5 tarjetas en las páginas PDF 8, 11, 12 y 15, respectivamente, y el precio de
+Klim en la página 10. Las cifras estilizadas de las páginas 5 y 9 requieren revisión
+manual. La suite ampliada tiene 63 pruebas e incluye Streamlit AppTest; el modo
+OCR antiguo basado en pytesseract conserva la limitación indicada anteriormente.
+La guía actual de instalación, uso y limitaciones se encuentra en README.md.

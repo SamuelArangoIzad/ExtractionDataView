@@ -22,6 +22,23 @@ st.set_page_config(page_title='Auditoría comercial',layout='wide',page_icon='�
 st.title('Auditoría de revista contra catálogo maestro')
 st.caption('Sistema local de tres capas · procesamiento sin envío a servidores externos · los datos de origen no se modifican')
 
+mode=st.sidebar.radio('2. Método de extracción', ['DEMO: transcripción revisable','OCR: leer PDF real','TARJETAS: detectar y visualizar','PRUEBA USUARIO FINAL'],horizontal=False)
+if mode=='PRUEBA USUARIO FINAL':
+    from auditoria.presentation.final_user_ui import final_user_workspace
+    final_user_workspace()
+    st.stop()
+if mode.startswith('TARJETAS'):
+    from auditoria.presentation.cards_ui import cards_workspace
+    with st.sidebar:
+        demo_cards=st.toggle('Utilizar revista de prueba incluida',value=True)
+        if demo_cards:
+            card_pdf=(ROOT/'data/Revista_Essentials.pdf').read_bytes()
+        else:
+            uploaded_pdf=st.file_uploader('Revista PDF para detectar tarjetas',type=['pdf'])
+            card_pdf=uploaded_pdf.getvalue() if uploaded_pdf else None
+    cards_workspace(card_pdf)
+    st.stop()
+
 with st.sidebar:
     st.header('1. Archivos de entrada')
     demo=st.toggle('Utilizar archivos de prueba incluidos',value=True)
@@ -37,7 +54,6 @@ with st.sidebar:
     except Exception as e:st.error(f'No se pudo leer Excel: {e}');st.stop()
     catalog_sheet=st.selectbox('Hoja que simula la base de datos',sheets,
                                 index=sheets.index('BASE_DATOS_PRUEBA') if 'BASE_DATOS_PRUEBA' in sheets else 0)
-    mode=st.radio('2. Método de extracción', ['DEMO: transcripción revisable','OCR: leer PDF real'],horizontal=False)
     tolerance=st.number_input('Tolerancia para precios (COP)',min_value=0,max_value=100000,step=100,value=0)
     with st.expander('Reglas de comparación',expanded=True):
         fields=st.multiselect('Campos a validar',FIELDS,default=list(FIELDS))

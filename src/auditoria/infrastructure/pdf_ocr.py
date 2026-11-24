@@ -3,8 +3,6 @@ from io import BytesIO
 import re
 from PIL import Image, ImageOps, ImageEnhance
 import fitz
-import pytesseract
-from pytesseract import Output
 from ..domain.models import Product
 from ..domain.compare import valid_gtin
 
@@ -17,6 +15,8 @@ def page_preview(pdf_bytes, page_index, rotation=0, zoom=0.8):
         return img.rotate(rotation,expand=True) if rotation else img
 
 def extract_candidates(pdf_bytes,pages,rotation_by_page=None,lang='spa+eng',dpi=160):
+    import pytesseract
+    from pytesseract import Output
     result=[];rotation_by_page=rotation_by_page or {}
     with fitz.open(stream=pdf_bytes,filetype='pdf') as pdf:
         for page_no in pages:
